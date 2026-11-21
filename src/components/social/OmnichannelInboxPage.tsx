@@ -68,7 +68,11 @@ import {
   savePlatformApiConfig
 } from '../../services/socialDb';
 
-export default function OmnichannelInboxPage() {
+export interface OmnichannelInboxPageProps {
+  showTopNav?: boolean;
+}
+
+export default function OmnichannelInboxPage({ showTopNav = true }: OmnichannelInboxPageProps = {}) {
   const [conversations, setConversations] = useState<OmniConversation[]>([]);
   const [selectedConvId, setSelectedConvId] = useState<string>('conv_fb_1');
   const selectedConvIdRef = useRef(selectedConvId);
@@ -1458,6 +1462,81 @@ export default function OmnichannelInboxPage() {
     return localStorage.getItem('omni_custom_store_context') || 'ঢাকা সিটির ভিতর ডেলিভারি চার্জ ৬০ টাকা (১-২ দিন), ঢাকার বাইরে ১২০ টাকা (২-৩ দিন)। ক্যাশ অন ডেলিভারি সুবিধা আছে।';
   });
 
+  // Sync Omnichannel AI Settings with Google Cloud SQL (system_configs table)
+  const syncAiSettingsToCloudSql = async (overrides?: Record<string, any>) => {
+    try {
+      const payload: Record<string, string> = {
+        omni_master_ai_reply_enabled: String(overrides?.masterAiReplyEnabled ?? masterAiReplyEnabled),
+        omni_ai_enabled_platforms: JSON.stringify(overrides?.aiEnabledPlatforms ?? aiEnabledPlatforms),
+        omni_ai_excluded_contacts: JSON.stringify(overrides?.excludedContacts ?? excludedContacts),
+        omni_active_bot_model: String(overrides?.activeAiBotModel ?? activeAiBotModel),
+        omni_ai_reply_mode: String(overrides?.aiReplyMode ?? aiReplyMode),
+        omni_ai_tone: String(overrides?.aiTone ?? aiTone),
+        omni_custom_ai_prompt: String(overrides?.customAiPrompt ?? customAiPrompt),
+        omni_custom_store_context: String(overrides?.customStoreContext ?? customStoreContext)
+      };
+      await fetch('/api/system/configs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ configs: payload })
+      });
+    } catch {
+      // Cloud SQL optional offline fallback handled silently by localStorage
+    }
+  };
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const res = await fetch('/api/system/configs');
+        if (!res.ok) return;
+        const data = await res.json();
+        const cfg = data?.configs;
+        if (!active || !cfg) return;
+
+        if (cfg.omni_master_ai_reply_enabled !== undefined) {
+          const val = cfg.omni_master_ai_reply_enabled === 'true';
+          setMasterAiReplyEnabled(val);
+          localStorage.setItem('omni_master_ai_reply_enabled', String(val));
+        }
+        if (cfg.omni_ai_enabled_platforms) {
+          const parsed = JSON.parse(cfg.omni_ai_enabled_platforms);
+          setAiEnabledPlatforms(parsed);
+          localStorage.setItem('omni_ai_enabled_platforms', JSON.stringify(parsed));
+        }
+        if (cfg.omni_ai_excluded_contacts) {
+          const parsed = JSON.parse(cfg.omni_ai_excluded_contacts);
+          setExcludedContacts(parsed);
+          localStorage.setItem('omni_ai_excluded_contacts', JSON.stringify(parsed));
+        }
+        if (cfg.omni_active_bot_model) {
+          setActiveAiBotModel(cfg.omni_active_bot_model);
+          localStorage.setItem('omni_active_bot_model', cfg.omni_active_bot_model);
+        }
+        if (cfg.omni_ai_reply_mode === 'auto_send' || cfg.omni_ai_reply_mode === 'draft_review') {
+          setAiReplyMode(cfg.omni_ai_reply_mode);
+          localStorage.setItem('omni_ai_reply_mode', cfg.omni_ai_reply_mode);
+        }
+        if (cfg.omni_ai_tone) {
+          setAiTone(cfg.omni_ai_tone as any);
+          localStorage.setItem('omni_ai_tone', cfg.omni_ai_tone);
+        }
+        if (cfg.omni_custom_ai_prompt) {
+          setCustomAiPrompt(cfg.omni_custom_ai_prompt);
+          localStorage.setItem('omni_custom_ai_prompt', cfg.omni_custom_ai_prompt);
+        }
+        if (cfg.omni_custom_store_context) {
+          setCustomStoreContext(cfg.omni_custom_store_context);
+          localStorage.setItem('omni_custom_store_context', cfg.omni_custom_store_context);
+        }
+      } catch {
+        // Fallback to localStorage values
+      }
+    })();
+    return () => { active = false; };
+  }, []);
+
   // Check if a conversation/contact is blacklisted / excluded from AI replies
   const isConvAiExcluded = (conv?: OmniConversation | null): boolean => {
     if (!conv) return false;
@@ -1521,6 +1600,7 @@ export default function OmnichannelInboxPage() {
         });
       }
       try { localStorage.setItem('omni_ai_excluded_contacts', JSON.stringify(updated)); } catch {}
+      void syncAiSettingsToCloudSql({ excludedContacts: updated });
       return updated;
     });
 
@@ -1547,6 +1627,7 @@ export default function OmnichannelInboxPage() {
     const updated = [...excludedContacts, newEx];
     setExcludedContacts(updated);
     try { localStorage.setItem('omni_ai_excluded_contacts', JSON.stringify(updated)); } catch {}
+    void syncAiSettingsToCloudSql({ excludedContacts: updated });
 
     setNewExcludedInput('');
     setNewExcludedName('');
@@ -1559,6 +1640,7 @@ export default function OmnichannelInboxPage() {
     const updated = excludedContacts.filter(e => e.id !== id);
     setExcludedContacts(updated);
     try { localStorage.setItem('omni_ai_excluded_contacts', JSON.stringify(updated)); } catch {}
+    void syncAiSettingsToCloudSql({ excludedContacts: updated });
     setStatusMessage({ type: 'success', text: '✅ ব্যতিক্রম তালিকা থেকে সরানো হয়েছে (এআই চালু করা যাবে)!' });
     setTimeout(() => setStatusMessage(null), 3000);
   };
@@ -1629,7 +1711,8 @@ export default function OmnichannelInboxPage() {
     } catch (e) {}
 
     setShowAiConfigModal(false);
-    setStatusMessage({ type: 'success', text: '✨ এআই অমনিচ্যানেল সেটিংস ও এপিআই কনফিগারেশন সংরক্ষিত হয়েছে!' });
+    void syncAiSettingsToCloudSql();
+    setStatusMessage({ type: 'success', text: '✨ এআই অমনিচ্যানেল সেটিংস ও এপিআই কনফিগারেশন Cloud SQL ও ব্রাউজারে সংরক্ষিত হয়েছে!' });
     setTimeout(() => setStatusMessage(null), 3500);
   };
 
@@ -2116,7 +2199,7 @@ export default function OmnichannelInboxPage() {
       <div className="max-w-7xl mx-auto space-y-4">
         
         {/* 1. Global Social Media & WhatsApp Top Tab Navigation Bar */}
-        <SocialMediaTopNav activeTab="omnichannel_inbox" />
+        {showTopNav && <SocialMediaTopNav activeTab="omnichannel_inbox" />}
 
         {/* Top Header & Metrics */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
@@ -2514,6 +2597,7 @@ export default function OmnichannelInboxPage() {
                       const updated = { ...aiEnabledPlatforms, [selectedConv.platform]: next };
                       setAiEnabledPlatforms(updated);
                       localStorage.setItem('omni_ai_enabled_platforms', JSON.stringify(updated));
+                      void syncAiSettingsToCloudSql({ aiEnabledPlatforms: updated });
                       setStatusMessage({
                         type: next ? 'success' : 'error',
                         text: next
@@ -2779,6 +2863,7 @@ export default function OmnichannelInboxPage() {
                         const next = aiReplyMode === 'auto_send' ? 'draft_review' : 'auto_send';
                         setAiReplyMode(next);
                         localStorage.setItem('omni_ai_reply_mode', next);
+                        void syncAiSettingsToCloudSql({ aiReplyMode: next });
                       }}
                       className="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                       title={aiReplyMode === 'auto_send' ? 'মোড: সরাসরি অটো-সেন্ড (ক্লিক করে ড্রাফট রিভিউ করুন)' : 'মোড: ড্রাফট রিভিউ (ক্লিক করে অটো-সেন্ড করুন)'}
@@ -2967,6 +3052,7 @@ export default function OmnichannelInboxPage() {
                       onClick={() => {
                         setAiReplyMode('auto_send');
                         localStorage.setItem('omni_ai_reply_mode', 'auto_send');
+                        void syncAiSettingsToCloudSql({ aiReplyMode: 'auto_send' });
                       }}
                       className={`px-2 py-0.5 rounded-md font-bold text-[10px] transition-all ${
                         aiReplyMode === 'auto_send'
@@ -2982,6 +3068,7 @@ export default function OmnichannelInboxPage() {
                       onClick={() => {
                         setAiReplyMode('draft_review');
                         localStorage.setItem('omni_ai_reply_mode', 'draft_review');
+                        void syncAiSettingsToCloudSql({ aiReplyMode: 'draft_review' });
                       }}
                       className={`px-2 py-0.5 rounded-md font-bold text-[10px] transition-all ${
                         aiReplyMode === 'draft_review'

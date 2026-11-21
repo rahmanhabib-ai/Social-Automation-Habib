@@ -6,3 +6,7 @@ coverage/
 *.log
 .env*
 !.env.example
+baileys_auth_info/
+data/*.json
+whatsapp_targets.json
+spark_campaigns.json
