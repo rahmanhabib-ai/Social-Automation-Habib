@@ -1,0 +1,104 @@
+{
+  "entities": {
+    "SocialPost": {
+      "title": "SocialPost",
+      "description": "Multi-platform social media post and schedule",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "content": { "type": "string" },
+        "mediaUrl": { "type": "string" },
+        "mediaType": { "type": "string", "enum": ["none", "image", "video", "carousel"] },
+        "platforms": { "type": "array" },
+        "scheduledAt": { "type": "string" },
+        "status": { "type": "string", "enum": ["draft", "scheduled", "publishing", "published", "failed"] },
+        "createdAt": { "type": "string" },
+        "publishedAt": { "type": "string" },
+        "results": { "type": "object" },
+        "productId": { "type": "string" }
+      },
+      "required": ["id", "content", "platforms", "status", "createdAt"]
+    },
+    "CommentAutomationRule": {
+      "title": "CommentAutomationRule",
+      "description": "Rule for auto-replying to comments and sending private DM messages",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "platforms": { "type": "array" },
+        "keywords": { "type": "array" },
+        "matchType": { "type": "string", "enum": ["exact", "contains", "regex"] },
+        "publicReplies": { "type": "array" },
+        "sendPrivateDm": { "type": "boolean" },
+        "privateDmMessage": { "type": "string" },
+        "includeProductLink": { "type": "boolean" },
+        "productUrl": { "type": "string" },
+        "isActive": { "type": "boolean" },
+        "createdAt": { "type": "string" },
+        "triggerCount": { "type": "number" }
+      },
+      "required": ["id", "name", "keywords", "isActive"]
+    },
+    "OmnichannelConversation": {
+      "title": "OmnichannelConversation",
+      "description": "Unified inbox conversation with customer across any social platform",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "platform": { "type": "string", "enum": ["facebook", "instagram", "tiktok", "telegram", "whatsapp"] },
+        "customerId": { "type": "string" },
+        "customerName": { "type": "string" },
+        "customerAvatar": { "type": "string" },
+        "lastMessage": { "type": "string" },
+        "lastMessageAt": { "type": "string" },
+        "unreadCount": { "type": "number" },
+        "isAiBotHandled": { "type": "boolean" },
+        "status": { "type": "string", "enum": ["open", "pending", "resolved"] },
+        "assignedAgent": { "type": "string" },
+        "messages": { "type": "array" }
+      },
+      "required": ["id", "platform", "customerName", "lastMessage"]
+    },
+    "SocialPlatformConfig": {
+      "title": "SocialPlatformConfig",
+      "description": "API keys, tokens, and channel settings for social media networks",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "metaPageAccessToken": { "type": "string" },
+        "metaPageId": { "type": "string" },
+        "instagramAccountId": { "type": "string" },
+        "metaAppSecret": { "type": "string" },
+        "metaVerifyToken": { "type": "string" },
+        "telegramBotToken": { "type": "string" },
+        "telegramChannelId": { "type": "string" },
+        "tiktokClientKey": { "type": "string" },
+        "tiktokClientSecret": { "type": "string" },
+        "youtubeApiKey": { "type": "string" },
+        "youtubeChannelId": { "type": "string" },
+        "whatsappChannelJid": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id"]
+    }
+  },
+  "firestore": {
+    "/social_posts/{postId}": {
+      "schema": "SocialPost",
+      "description": "Social media scheduled and published posts"
+    },
+    "/comment_rules/{ruleId}": {
+      "schema": "CommentAutomationRule",
+      "description": "Comment-to-DM and auto-reply rules"
+    },
+    "/omnichannel_conversations/{conversationId}": {
+      "schema": "OmnichannelConversation",
+      "description": "Central omnichannel chat conversations across all social platforms"
+    },
+    "/social_platform_configs/{configId}": {
+      "schema": "SocialPlatformConfig",
+      "description": "API credentials and integration configurations"
+    }
+  }
+}

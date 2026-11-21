@@ -1,0 +1,21 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow read/write for all application collections
+    match /social_posts/{postId} {
+      allow read, write: if true;
+    }
+    match /comment_rules/{ruleId} {
+      allow read, write: if true;
+    }
+    match /omnichannel_conversations/{conversationId} {
+      allow read, write: if true;
+    }
+    match /social_platform_configs/{configId} {
+      allow read, write: if true;
+    }
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}

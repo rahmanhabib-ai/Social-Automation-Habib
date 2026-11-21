@@ -1,0 +1,8 @@
+{
+  "name": "SOCIAL AUTOmation 1.0",
+  "description": "Unified Enterprise Operations & AI Platform — স্মার্ট পিওএস, অটোমেশন ও এআই কন্ট্রোলার সিস্টেম।",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

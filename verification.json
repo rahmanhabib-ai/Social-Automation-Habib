@@ -1,0 +1,32 @@
+{
+  "date": "2026-09-17",
+  "node_version": "24.19.0",
+  "baileys_version": "7.0.0-rc14",
+  "patch_id": "newsletter-image-video-rc14-1",
+  "offline_tests": {
+    "passed": 12,
+    "failed": 0
+  },
+  "typescript_check": "passed for supplied server, helper and tests",
+  "backend_esm_bundle": "passed",
+  "backend_syntax_check": "passed",
+  "npm_manifest_lock_match": true,
+  "bun_frozen_lock_check": "passed",
+  "live_whatsapp_delivery": "NOT RUN — no user WhatsApp session available",
+  "full_frontend_build": "NOT RUN — frontend source and project configuration not supplied",
+  "sha256": {
+    "server.ts": "75c06b40e772683cc5ec9647afe2b1279d7b178d8395c2d30706dcac90fa03d1",
+    "package.json": "9b156efef5ff8533e8cee7da6dc36bec14f145c43042ec9937fac6c2645c2085",
+    "package-lock.json": "511d0f587e14cfca4bd39a6e012743659461282c3a0716b21b9f951813649218",
+    "bun.lock": "3ed80297a2493bc21492f16e8b957487acb737f18c30f25fed7ccb4d264e9aca",
+    "whatsapp-newsletter.ts": "d34c1c4d0a2f96f2bd7e55c93982b7dd70c86bddefa853a3a9a6c560334e0020",
+    "scripts/patch-baileys-newsletter.cjs": "7aeac81269503348445f0c5b173afe068a47c7623439a5fad9fbd752495ff91a",
+    "patches/baileys-newsletter-rc14.json": "d1b7f65488d57ba4e02583b9544da9ca9e8be04f64a6127b179f5f8aa1ffc5e3",
+    "patches/baileys-newsletter-rc14.patch": "a3b8c0967453ad6215584b564dbf58f6e2afa81cf4abb4f7f99f6c0c69edac35",
+    "scripts/send-newsletter-test.mjs": "408395a34828b5b478d8975d40e765aaedd74288afafe22914852b6ce988506d",
+    "tests/newsletter.test.ts": "8ed3e2553a381c3930e065ccb94a0db72a3d0574a3b89f8351e38af3e9eb2dd7",
+    "tests/fixtures/sample.mp4": "d776ac4da517aa6de5a72502b079da2d76f9340d204b344011cc207bef65809a",
+    "BAILEYS_PATCH_NOTICES.txt": "469b9c7cbddf604a68db5a9b4b85efe16cabaed7a520f5c5c14276879ba14253",
+    "WhatsApp_Media_Fix_README_BN.md": "da8654c04ceca67266aeb8ae3d9b01949e99bbfecfd498cbfe5e079ec335f1fc"
+  }
+}

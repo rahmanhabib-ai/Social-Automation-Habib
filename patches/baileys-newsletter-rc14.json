@@ -1,0 +1,80 @@
+{
+  "package": "@whiskeysockets/baileys",
+  "version": "7.0.0-rc14",
+  "patchId": "newsletter-image-video-rc14-1",
+  "upstreamReference": "https://github.com/WhiskeySockets/Baileys/pull/2434",
+  "files": [
+    {
+      "path": "lib/Utils/messages.js",
+      "beforeSha256": "3dde841c3caa0698862507e6c4268600494288817139f33152f490f3a715861f",
+      "afterSha256": "cfa4db7b74b748f6a54431fa906097e487e5c4650e548b13c6a4974f45286a0e",
+      "edits": [
+        {
+          "before": "    // check if cacheable + generate cache key",
+          "after": "    const isNewsletter = !!options.jid && isJidNewsletter(options.jid);\n    // Keep raw newsletter uploads separate from encrypted chat media in shared caches."
+        },
+        {
+          "before": "        mediaType + ':' + uploadData.media.url.toString();",
+          "after": "        (isNewsletter ? 'newsletter:' : '') + mediaType + ':' + uploadData.media.url.toString();"
+        },
+        {
+          "before": "    const isNewsletter = !!options.jid && isJidNewsletter(options.jid);\n    if (isNewsletter) {",
+          "after": "    if (isNewsletter) {"
+        },
+        {
+          "before": "    if (isNewsletter) {\n        logger?.info({ key: cacheableKey }, 'Preparing raw media for newsletter');\n        const { filePath, fileSha256, fileLength } = await getRawMediaUploadData(uploadData.media, options.mediaTypeOverride || mediaType, logger);\n        const fileSha256B64 = fileSha256.toString('base64');\n        const { mediaUrl, directPath } = await options.upload(filePath, {\n            fileEncSha256B64: fileSha256B64,\n            mediaType: mediaType,\n            timeoutMs: options.mediaUploadTimeoutMs\n        });\n        await fs.unlink(filePath);\n        const obj = WAProto.Message.fromObject({\n            // todo: add more support here\n            [`${mediaType}Message`]: MessageTypeProto[mediaType].fromObject({\n                url: mediaUrl,\n                directPath,\n                fileSha256,\n                fileLength,\n                ...uploadData,\n                media: undefined\n            })\n        });\n        if (uploadData.ptv) {\n            obj.ptvMessage = obj.videoMessage;\n            delete obj.videoMessage;\n        }\n        if (obj.stickerMessage) {\n            obj.stickerMessage.stickerSentTs = Date.now();\n        }\n        if (cacheableKey) {\n            logger?.debug({ cacheableKey }, 'set cache');\n            await options.mediaCache.set(cacheableKey, WAProto.Message.encode(obj).finish());\n        }\n        return obj;\n    }\n",
+          "after": "    if (isNewsletter) {\n        logger?.info({ key: cacheableKey }, 'Preparing raw media for newsletter');\n        const { filePath, fileSha256, fileLength } = await getRawMediaUploadData(uploadData.media, options.mediaTypeOverride || mediaType, logger);\n        try {\n            const { directPath, thumbnailDirectPath, thumbnailSha256 } = await options.upload(filePath, {\n                fileEncSha256B64: fileSha256.toString('base64'),\n                mediaType,\n                timeoutMs: options.mediaUploadTimeoutMs,\n                newsletter: true\n            });\n            if (!directPath) {\n                throw new Boom('Newsletter upload returned no directPath', { statusCode: 502 });\n            }\n            const obj = WAProto.Message.fromObject({\n                [`${mediaType}Message`]: MessageTypeProto[mediaType].fromObject({\n                    ...uploadData,\n                    directPath,\n                    fileSha256,\n                    fileLength,\n                    thumbnailDirectPath,\n                    thumbnailSha256: thumbnailSha256 ? Buffer.from(thumbnailSha256, 'base64') : undefined,\n                    // Raw newsletter media is referenced by the server's signed directPath.\n                    url: undefined,\n                    mediaKey: undefined,\n                    fileEncSha256: undefined,\n                    media: undefined\n                })\n            });\n            if (uploadData.ptv) {\n                obj.ptvMessage = obj.videoMessage;\n                delete obj.videoMessage;\n            }\n            if (obj.stickerMessage) {\n                obj.stickerMessage.stickerSentTs = Date.now();\n            }\n            if (cacheableKey) {\n                await options.mediaCache.set(cacheableKey, WAProto.Message.encode(obj).finish());\n            }\n            return obj;\n        }\n        finally {\n            await fs.unlink(filePath).catch(() => {});\n        }\n    }\n"
+        }
+      ]
+    },
+    {
+      "path": "lib/Utils/messages-media.js",
+      "beforeSha256": "22730bc93f1728e6b5866f8d50af67cdcaff6e23a1260450ac7b4bd082e187c0",
+      "afterSha256": "e93ca83288d4909cedabf7f41d1defd7811707cdb5e62ab43ce635a5d4a184ee",
+      "edits": [
+        {
+          "before": "return async (filePath, { mediaType, fileEncSha256B64, timeoutMs }) => {",
+          "after": "return async (filePath, { mediaType, fileEncSha256B64, timeoutMs, newsletter }) => {"
+        },
+        {
+          "before": "            const url = `https://${hostname}${MEDIA_PATH_MAP[mediaType]}/${fileEncSha256B64}?auth=${auth}&token=${fileEncSha256B64}`;",
+          "after": "            // Scoped backport of Baileys PR #2434 for channel images and videos.\n            const newsletterPaths = { image: '/newsletter/newsletter-image', video: '/newsletter/newsletter-video' };\n            const mediaPath = (newsletter && newsletterPaths[mediaType]) || MEDIA_PATH_MAP[mediaType];\n            let url = `https://${hostname}${mediaPath}/${fileEncSha256B64}?auth=${auth}&token=${fileEncSha256B64}`;\n            if (newsletter && newsletterPaths[mediaType]) {\n                url += '&server_thumb_gen=1';\n                if (mediaType === 'video') url += '&server_transcode=1';\n            }"
+        },
+        {
+          "before": "                        mediaUrl: result.url,",
+          "after": "                        mediaUrl: result.url || result.direct_path,"
+        },
+        {
+          "before": "                        ts: result.ts\n",
+          "after": "                        ts: result.ts,\n                        thumbnailDirectPath: result.thumbnail_info?.thumbnail_direct_path,\n                        thumbnailSha256: result.thumbnail_info?.thumbnail_sha256\n"
+        }
+      ]
+    },
+    {
+      "path": "lib/Socket/messages-send.js",
+      "beforeSha256": "81387f00b457ea28b481b1320bfdbf5ada766305f6f2bc7033931f49811519dc",
+      "afterSha256": "ec8acbd9b3480627a13265870829f867d841e87796af0ada60ec6ceb9cee7629",
+      "edits": [
+        {
+          "before": "                    tag: 'plaintext',\n                    attrs: {},",
+          "after": "                    tag: 'plaintext',\n                    attrs: mediaType ? { mediatype: mediaType } : {},"
+        }
+      ]
+    },
+    {
+      "path": "lib/Types/Message.d.ts",
+      "beforeSha256": "20a92ad339e918c1b4718e9e4dfa23ca96bc7333ecfcef2c4eede6c1b7b74c7d",
+      "afterSha256": "010a91945cafba668914a96efdd3078d8666c52cb7cf4c905a1781760966304f",
+      "edits": [
+        {
+          "before": "    timeoutMs?: number;\n}) => Promise<{\n    mediaUrl: string;",
+          "after": "    timeoutMs?: number;\n    newsletter?: boolean;\n}) => Promise<{\n    mediaUrl: string;"
+        },
+        {
+          "before": "    fbid?: number;\n}>;\nexport type MediaGenerationOptions",
+          "after": "    fbid?: number;\n    thumbnailDirectPath?: string;\n    thumbnailSha256?: string;\n}>;\nexport type MediaGenerationOptions"
+        }
+      ]
+    }
+  ]
+}
